@@ -18,3 +18,6 @@ class TestResults(models.Model):
     student_id = models.ForeignKey('stud.Students', on_delete=models.CASCADE)
     answers = models.JSONField()
 
+
+class TestImage(models.Model):
+    image = models.ImageField(upload_to='uploads/')
