@@ -1,6 +1,10 @@
-from django.urls import path
-from .views import CreateTestView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TestViewSet
+
+router = DefaultRouter()
+router.register(r'tests', TestViewSet)  # Это создаст маршруты для CRUD операций
 
 urlpatterns = [
-    path('create-test/', CreateTestView.as_view(), name='create-test'),
+    path('', include(router.urls)),  # Включаем все маршруты, зарегистрированные в router
 ]

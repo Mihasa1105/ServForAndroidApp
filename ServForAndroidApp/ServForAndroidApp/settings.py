@@ -80,9 +80,9 @@ WSGI_APPLICATION = 'ServForAndroidApp.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'psqldb',
-        'USER': 'Mihasa',
-        'PASSWORD': '12345678',
+        'NAME': 'pgdbforkursandapp',
+        'USER': 'meow',
+        'PASSWORD': '1234',
         'HOST': 'localhost',
         'PORT': '5432'
     }
