@@ -3,8 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import TestViewSet
 
 router = DefaultRouter()
-router.register(r'tests', TestViewSet)  # Это создаст маршруты для CRUD операций
+router.register(r'tests', TestViewSet)
 
 urlpatterns = [
-    path('', include(router.urls)),  # Включаем все маршруты, зарегистрированные в router
+    path('', include(router.urls)),
 ]
