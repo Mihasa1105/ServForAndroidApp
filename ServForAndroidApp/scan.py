@@ -5,7 +5,7 @@ import numpy as np
 widthImg = 800
 heightImg = 1000
 
-image = cv2.imread('test3.png')
+image = cv2.imread('test9.png')
 imgBlank = np.zeros((heightImg,widthImg, 3), np.uint8)
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 blurred = cv2.GaussianBlur(gray, (5, 5), 1)
@@ -13,7 +13,8 @@ blurred = cv2.GaussianBlur(gray, (5, 5), 1)
 #     blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
 #     cv2.THRESH_BINARY_INV, 11, 2
 # )
-adaptive_thresh = cv2.Canny(blurred, 70, 160)
+adaptive_thresh = cv2.Canny(blurred, 50, 200)
+
 kernel = np.ones((5, 5))
 dial = cv2.dilate(adaptive_thresh, kernel, iterations=2)
 adaptive_thresh = cv2.erode(dial, kernel, iterations=1)
@@ -23,7 +24,9 @@ imgBigContour = image.copy()
 
 contours, hierarchy = cv2.findContours(adaptive_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 cv2.drawContours(imgContours, contours, -1, (0, 255, 0), 10)
-
+imgcopy = cv2.resize(imgContours, (600, 750))
+cv2.imshow('origin', imgcopy)
+cv2.waitKey(0)
 
 
 def reorder(myPoints):
@@ -57,6 +60,13 @@ for i in contours:
     if area > 5000:
         peri = cv2.arcLength(i, True)
         approx = cv2.approxPolyDP(i, 0.02 * peri, True)
+
+        img_contours = np.uint8(np.zeros((image.shape[0], image.shape[1])))
+        cv2.drawContours(img_contours, [approx], -1, (255, 255, 255), 1)
+        imgcopy = cv2.resize(img_contours, (600, 750))
+        cv2.imshow('origin', imgcopy)
+        cv2.waitKey(0)
+
         if area > max_area and len(approx) == 4:
             biggest = approx
             max_area = area
@@ -78,101 +88,6 @@ if biggest.size != 0:
     imgAdaptiveThre = cv2.bitwise_not(imgAdaptiveThre)
     imgAdaptiveThre = cv2.medianBlur(imgAdaptiveThre, 3)
 
-#     imageArray = ([image, gray, adaptive_thresh, imgContours],
-#                   [imgBigContour, imgWarpColored, imgWarpGray, imgAdaptiveThre])
-#
-# else:
-#     imageArray = ([image,gray,adaptive_thresh,imgContours],
-#                     [imgBlank, imgBlank, imgBlank, imgBlank])
-
-
-cv2.imshow("Adaptive Threshold", imgAdaptiveThre)  # Отображаем адаптивный порог
+imgcopy = cv2.resize(imgAdaptiveThre, (600, 750))
+cv2.imshow('origin', imgcopy)
 cv2.waitKey(0)
-
-# # Применяем морфологическое закрытие для устранения мелких разрывов в контуре
-#
-# kernel = np.ones((5, 5), np.uint8)
-# closed = cv2.morphologyEx(adaptive_thresh, cv2.MORPH_CLOSE, kernel)
-# cv2.imshow("Morphological Closing", closed)  # Отображаем результат морфологического закрытия
-# cv2.waitKey(0)
-#
-# # Поиск контуров после морфологических преобразований
-# contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#
-# # Инициализируем переменные для поиска контуров
-# sheet_contour = None
-# max_area = 0
-#
-# # Ищем контур, который является приблизительно прямоугольным
-# for contour in contours:
-#     area = cv2.contourArea(contour)
-#     if area > max_area:
-#         # Проверяем, является ли контур приблизительно прямоугольным
-#         approx = cv2.approxPolyDP(contour, 0.02 * cv2.arcLength(contour, True), True)
-#         if len(approx) == 4:  # Контур имеет 4 угла
-#             sheet_contour = approx
-#             max_area = area
-#
-# # Проверяем, что нашли контур листа
-# if sheet_contour is not None:
-#     # Рисуем найденный контур листа на изображении
-#     cv2.drawContours(image, [sheet_contour], -1, (0, 255, 0), 2)  # Рисуем контур листа зеленым цветом
-#     cv2.imshow("Detected Sheet Contour", image)  # Отображаем изображение с контуром листа
-#     cv2.waitKey(0)
-#
-#     # Создаем маску, чтобы ограничить область поиска внутри листа
-#     mask = np.zeros_like(gray)
-#     cv2.drawContours(mask, [sheet_contour], -1, 255, thickness=cv2.FILLED)
-#     sheet_area = cv2.bitwise_and(closed, closed, mask=mask)
-#
-#     # Отображаем область листа
-#     cv2.imshow("Sheet Area", sheet_area)
-#     cv2.waitKey(0)
-#
-#     # Поиск контуров внутри области листа для выявления маркеров
-#     contours, _ = cv2.findContours(sheet_area, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#
-#     # Параметры для обнаружения углов
-#     corners = []
-#
-#     # Ищем квадратные маркеры внутри области листа
-#     for contour in contours:
-#         # Проверяем, похож ли контур на квадратный маркер
-#         approx = cv2.approxPolyDP(contour, 0.02 * cv2.arcLength(contour, True), True)
-#         x, y, w, h = cv2.boundingRect(approx)
-#
-#         if len(approx) == 4 and w >= 20 and h >= 20:
-#             # Определяем центр маркера
-#             center_x, center_y = x + w // 2, y + h // 2
-#             corners.append((center_x, center_y))
-#
-#     # Отображаем угловые маркеры
-#     for corner in corners:
-#         cv2.circle(image, corner, 10, (0, 0, 255), -1)
-#     cv2.imshow("Detected Corners on Sheet", image)
-#     cv2.waitKey(0)
-#
-#     # Проверяем, что нашли все 4 угла, и продолжаем выравнивание
-#     if len(corners) == 4:
-#         corners = sorted(corners, key=lambda x: (x[1], x[0]))
-#         if corners[0][0] > corners[1][0]:
-#             corners[0], corners[1] = corners[1], corners[0]
-#         if corners[2][0] < corners[3][0]:
-#             corners[2], corners[3] = corners[3], corners[2]
-#
-#         width, height = 800, 1000
-#         dst_points = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
-#         src_points = np.float32(corners)
-#
-#         matrix = cv2.getPerspectiveTransform(src_points, dst_points)
-#         aligned_image = cv2.warpPerspective(image, matrix, (width, height))
-#
-#         # Отображаем выровненное изображение
-#         cv2.imshow("Aligned Image", aligned_image)
-#         cv2.waitKey(0)
-#     else:
-#         print("Не удалось обнаружить все четыре угловых маркера.")
-# else:
-#     print("Не удалось определить контур листа.")
-#
-# cv2.destroyAllWindows()

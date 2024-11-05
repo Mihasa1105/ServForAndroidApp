@@ -4,7 +4,7 @@ import numpy as np
 # Параметры для макета
 width, height = 800, 1000  # Размер холста
 column_x_offsets = [200, 500]  # Отступы по X для двух столбцов
-y_start = 200  # Начальная позиция Y
+y_start = 250  # Начальная позиция Y
 y_gap = 60  # Расстояние между вопросами
 
 # Создаем белый холст
@@ -34,18 +34,21 @@ for column in column_x_offsets:
         for i in range(4):
             circle_x = column + i * 40 + 25
             circle_y = y_position
-            cv2.circle(canvas, (circle_x, circle_y), 10, (0, 0, 0), 1)
+            cv2.circle(canvas, (circle_x, circle_y), 10, (0, 0, 0), 1)  # Кружок
 
         # Переходим к следующему вопросу
         question_number += 1
         y_position += y_gap
 
-# Добавляем угловые метки для распознавания
-corner_size = 20
-cv2.rectangle(canvas, (0, 0), (corner_size, corner_size), (0, 0, 0), -1)  # Верхний левый
-cv2.rectangle(canvas, (width - corner_size, 0), (width, corner_size), (0, 0, 0), -1)  # Верхний правый
-cv2.rectangle(canvas, (0, height - corner_size), (corner_size, height), (0, 0, 0), -1)  # Нижний левый
-cv2.rectangle(canvas, (width - corner_size, height - corner_size), (width, height), (0, 0, 0), -1)  # Нижний правый
+# Определяем координаты рамки
+
+# rect_top_left = (column_x_offsets[0], y_start)  # Верхний левый угол (включая буквы и номера)
+# rect_bottom_right = (column_x_offsets[1] , y_position)  # Нижний правый угол (после последнего вопроса)
+# cv2.rectangle(canvas, rect_top_left, rect_bottom_right, (0, 0, 0), 1)  # Тонкая рамка
+
+rect_top_left = (column_x_offsets[0] - 60, y_start - 70)  # Верхний левый угол (включая буквы и номера)
+rect_bottom_right = (column_x_offsets[1] + 190, y_position - 20)  # Нижний правый угол (после последнего вопроса)
+cv2.rectangle(canvas, rect_top_left, rect_bottom_right, (0, 0, 0), 2)  # Тонкая рамка
 
 # Сохраняем изображение
 cv2.imwrite('answer_sheet_template.png', canvas)
