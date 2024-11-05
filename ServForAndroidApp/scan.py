@@ -5,14 +5,10 @@ import numpy as np
 widthImg = 800
 heightImg = 1000
 
-image = cv2.imread('test9.png')
-imgBlank = np.zeros((heightImg,widthImg, 3), np.uint8)
+image = cv2.imread('test14.png')
+imgBlank = np.zeros((heightImg, widthImg, 3), np.uint8)
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 blurred = cv2.GaussianBlur(gray, (5, 5), 1)
-# adaptive_thresh = cv2.adaptiveThreshold(
-#     blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-#     cv2.THRESH_BINARY_INV, 11, 2
-# )
 adaptive_thresh = cv2.Canny(blurred, 50, 200)
 
 kernel = np.ones((5, 5))
@@ -91,3 +87,44 @@ if biggest.size != 0:
 imgcopy = cv2.resize(imgAdaptiveThre, (600, 750))
 cv2.imshow('origin', imgcopy)
 cv2.waitKey(0)
+
+cut_img_gray = cv2.cvtColor(imgWarpColored, cv2.COLOR_BGR2GRAY)
+cut_img_blurred = cv2.GaussianBlur(cut_img_gray, (5, 5), 0)
+cut_img_thresh = cv2.Canny(cut_img_blurred, 40, 200)
+
+imgcopy = cv2.resize(cut_img_thresh, (600, 750))
+cv2.imshow('origin', imgcopy)
+cv2.waitKey(0)
+
+cut_img_kernel = np.ones((5, 5))
+cut_img_dial = cv2.dilate(cut_img_thresh, cut_img_kernel, iterations=2)
+cut_img_thresh = cv2.erode(cut_img_dial, cut_img_kernel, iterations=1)
+
+imgcopy = cv2.resize(cut_img_thresh, (600, 750))
+cv2.imshow('origin', imgcopy)
+cv2.waitKey(0)
+
+cut_img_contours, cut_img_hierarchy = cv2.findContours(cut_img_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+min_radius = 10
+max_radius = 20
+
+filled_circles = []
+
+for cnt in cut_img_contours:
+    # Проверить, является ли контур достаточно круглым
+    (x, y), radius = cv2.minEnclosingCircle(cnt)
+    if min_radius < radius < max_radius:
+        # Выделить кружок и проверить его заполненность
+        mask = np.zeros(cut_img_thresh.shape, dtype="uint8")
+        cv2.drawContours(mask, [cnt], -1, 255, -1)
+
+        # Подсчитать количество черных пикселей внутри круга
+        circle_region = cv2.bitwise_and(cut_img_thresh, cut_img_thresh, mask=mask)
+        filled_ratio = cv2.countNonZero(circle_region) / (np.pi * radius ** 2)
+
+        # Если заполненность выше порога, считать круг заполненным
+        if filled_ratio > 0.5:  # порог можно подстроить
+            filled_circles.append((int(x), int(y)))
+
+print("Заполненные кружки:", filled_circles)
