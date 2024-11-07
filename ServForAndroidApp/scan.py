@@ -89,10 +89,10 @@ cv2.imshow('origin', imgcopy)
 cv2.waitKey(0)
 
 cut_img_gray = cv2.cvtColor(imgWarpColored, cv2.COLOR_BGR2GRAY)
-cut_img_blurred = cv2.GaussianBlur(cut_img_gray, (5, 5), 0)
-cut_img_thresh = cv2.Canny(cut_img_blurred, 40, 200)
+cut_img_blurred = cv2.GaussianBlur(cut_img_gray, (5, 5), 1)
+cut_img_thresh = cv2.Canny(cut_img_blurred, 60, 50)
 
-imgcopy = cv2.resize(cut_img_thresh, (600, 750))
+imgcopy = cv2.resize(imgWarpColored, (600, 750))
 cv2.imshow('origin', imgcopy)
 cv2.waitKey(0)
 
@@ -124,7 +124,14 @@ for cnt in cut_img_contours:
         filled_ratio = cv2.countNonZero(circle_region) / (np.pi * radius ** 2)
 
         # Если заполненность выше порога, считать круг заполненным
-        if filled_ratio > 0.5:  # порог можно подстроить
+        if filled_ratio > 0.8:  # порог можно подстроить
             filled_circles.append((int(x), int(y)))
+
+for (x, y) in filled_circles:
+    cv2.circle(imgWarpColored, (x, y), int(10), (0, 0, 255), 2)  # Красный круг вокруг заполненного кружка
+
+imgcopy = cv2.resize(imgWarpColored, (600, 750))
+cv2.imshow('origin', imgcopy)
+cv2.waitKey(0)
 
 print("Заполненные кружки:", filled_circles)
