@@ -1,57 +1,71 @@
 import cv2
 import numpy as np
 
-# Параметры для макета
-width, height = 800, 1000  # Размер холста
-column_x_offsets = [200, 500]  # Отступы по X для двух столбцов
-y_start = 250  # Начальная позиция Y
-y_gap = 60  # Расстояние между вопросами
+# Загрузка четырёх разных угловых меток
+marker_bl = cv2.imread("markers/bottom_left.png", cv2.IMREAD_GRAYSCALE)
+marker_br = cv2.imread("markers/bottom_right.png", cv2.IMREAD_GRAYSCALE)
+marker_tl = cv2.imread("markers/top_left.png", cv2.IMREAD_GRAYSCALE)
+marker_tr = cv2.imread("markers/top_right.png", cv2.IMREAD_GRAYSCALE)
 
-# Создаем белый холст
-canvas = np.ones((height, width, 3), dtype="uint8") * 255
+# Размер меток (предполагаем, что все метки одинакового размера)
+marker_size = marker_tl.shape[0]
 
-# Шрифт и параметры
-font = cv2.FONT_HERSHEY_SIMPLEX
-font_scale = 1
-font_thickness = 1
+# Настройки для листа
+width, height = 1240, 1754  # Размер A4 в пикселях при разрешении 150 DPI
+columns = ['A', 'B', 'C', 'D', 'E']  # Варианты ответов
+num_questions = 50  # Количество вопросов
+questions_per_column = 25  # Вопросы в одной колонке
+circle_radius = 15  # Радиус кружков для ответов
+circle_spacing_y = 45  # Вертикальный интервал между вопросами
+margin_top = 200  # Увеличен отступ сверху, чтобы разместить метки
+margin_left = 200  # Отступ слева для первой колонки
+column_spacing_x = 50  # Горизонтальный интервал между колонками с вариантами
 
-# Добавляем заголовок вариантов (заменим на английские буквы A, B, C, D)
-for x_offset in column_x_offsets:
-    for i, letter in enumerate(['A', 'B', 'C', 'D']):
-        # Пробуем отрисовать текст выше кружков
-        cv2.putText(canvas, letter, (x_offset + i * 40 + 15, y_start - 25), font, font_scale, (0, 0, 0), font_thickness)
+# Создаём белый фон для листа
+answer_sheet = np.ones((height, width), dtype=np.uint8) * 255
 
-# Добавляем вопросы и кружки ответов
-question_number = 1
-for column in column_x_offsets:
-    y_position = y_start
-    for _ in range(10):
-        # Сдвигаем номер вопроса вниз для центровки
-        cv2.putText(canvas, str(question_number), (column - 40, y_position + 10), font, font_scale, (0, 0, 0),
-                    font_thickness)
+# Размещение четырёх разных меток в углах
+answer_sheet[50:50 + marker_size, 50:50 + marker_size] = marker_tl  # Верхний левый
+answer_sheet[50:50 + marker_size, width - 50 - marker_size:width - 50] = marker_tr  # Верхний правый
+answer_sheet[height - 50 - marker_size:height - 50, 50:50 + marker_size] = marker_bl  # Нижний левый
+answer_sheet[height - 50 - marker_size:height - 50, width - 50 - marker_size:width - 50] = marker_br  # Нижний правый
 
-        # Рисуем кружки для ответов
-        for i in range(4):
-            circle_x = column + i * 40 + 25
-            circle_y = y_position
-            cv2.circle(canvas, (circle_x, circle_y), 10, (0, 0, 0), 1)  # Кружок
+# Определение позиций для столбцов с вариантами и добавление букв (A, B, C, D) над каждым
+start_x = margin_left
 
-        # Переходим к следующему вопросу
-        question_number += 1
-        y_position += y_gap
+for i, column in enumerate(columns):
+    cv2.putText(
+        answer_sheet, column,
+        (start_x + i * column_spacing_x - 5, margin_top - 40),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
+    )
 
-# Определяем координаты рамки
+# Рисуем вопросы с вариантами ответов
+for q in range(num_questions):
+    question_num = q + 1
+    row = q % questions_per_column
+    col = q // questions_per_column
 
-# rect_top_left = (column_x_offsets[0], y_start)  # Верхний левый угол (включая буквы и номера)
-# rect_bottom_right = (column_x_offsets[1] , y_position)  # Нижний правый угол (после последнего вопроса)
-# cv2.rectangle(canvas, rect_top_left, rect_bottom_right, (0, 0, 0), 1)  # Тонкая рамка
+    # Позиция для номера вопроса
+    question_y = margin_top + row * circle_spacing_y
+    question_x = margin_left + col * (4 * column_spacing_x + 100)
 
-rect_top_left = (column_x_offsets[0] - 60, y_start - 70)  # Верхний левый угол (включая буквы и номера)
-rect_bottom_right = (column_x_offsets[1] + 190, y_position - 20)  # Нижний правый угол (после последнего вопроса)
-cv2.rectangle(canvas, rect_top_left, rect_bottom_right, (0, 0, 0), 2)  # Тонкая рамка
+    # Рисуем номер вопроса
+    cv2.putText(
+        answer_sheet, f"{question_num:02d}",
+        (question_x - 60, question_y + 5),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2
+    )
+
+    # Рисуем кружки для вариантов ответа (A, B, C, D)
+    for option in range(5):
+        circle_x = question_x + option * column_spacing_x
+        cv2.circle(answer_sheet, (circle_x, question_y), circle_radius, (0, 0, 0), 2)
 
 # Сохраняем изображение
-cv2.imwrite('answer_sheet_template.png', canvas)
-cv2.imshow('Answer Sheet Template', canvas)
+cv2.imwrite("generated_answer_sheet_with_different_markers.png", answer_sheet)
+
+# Показываем изображение
+cv2.imshow("Answer Sheet with Different Markers", answer_sheet)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
