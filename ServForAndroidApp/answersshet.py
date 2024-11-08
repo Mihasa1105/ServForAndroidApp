@@ -20,6 +20,9 @@ circle_spacing_y = 45  # Вертикальный интервал между в
 margin_top = 200  # Увеличен отступ сверху, чтобы разместить метки
 margin_left = 200  # Отступ слева для первой колонки
 column_spacing_x = 50  # Горизонтальный интервал между колонками с вариантами
+column_spacing = 200
+
+column_width = len(columns) * column_spacing_x
 
 # Создаём белый фон для листа
 answer_sheet = np.ones((height, width), dtype=np.uint8) * 255
@@ -33,12 +36,17 @@ answer_sheet[height - 50 - marker_size:height - 50, width - 50 - marker_size:wid
 # Определение позиций для столбцов с вариантами и добавление букв (A, B, C, D) над каждым
 start_x = margin_left
 
-for i, column in enumerate(columns):
-    cv2.putText(
-        answer_sheet, column,
-        (start_x + i * column_spacing_x - 5, margin_top - 40),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
-    )
+num_columns = (num_questions + questions_per_column - 1) // questions_per_column
+
+for col in range(num_columns):
+    # Начальная позиция для каждого столбца, включая `column_spacing`
+    start_x = margin_left + col * (column_width + column_spacing)
+    for i, option in enumerate(columns):
+        cv2.putText(
+            answer_sheet, option,
+            (start_x + i * column_spacing_x - 5, margin_top - 40),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2
+        )
 
 # Рисуем вопросы с вариантами ответов
 for q in range(num_questions):
@@ -48,7 +56,7 @@ for q in range(num_questions):
 
     # Позиция для номера вопроса
     question_y = margin_top + row * circle_spacing_y
-    question_x = margin_left + col * (4 * column_spacing_x + 100)
+    question_x = margin_left + col * (column_width + column_spacing)
 
     # Рисуем номер вопроса
     cv2.putText(
