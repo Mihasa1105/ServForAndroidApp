@@ -1,13 +1,30 @@
-from .models import Test, TestResults
+
+from .models import Test, TestResults, TestImage
 from rest_framework import viewsets
-from rest_framework.response import Response
-from rest_framework import status
 from .serializers import TestImageSerializer, TestResultsSerializer, TestSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
 from .scan import scan
+from django.http import HttpResponse
+import cv2
+import numpy as np
+from PIL import Image
+import io
+from rest_framework.decorators import action, api_view
+from rest_framework.response import Response
+import json
+
 
 class TestViewSet(viewsets.ModelViewSet):
     queryset = Test.objects.all()
     serializer_class = TestSerializer
+
+    @action(detail=False, methods=['get'], url_path='teacher_tests')
+    def get_teacher_tests(self, request):
+        teacher_id = request.query_params.get('teacher_id')
+        if teacher_id is not None:
+            tests = Test.objects.filter(user_id=teacher_id).values('test_name')
+            return Response(tests)
+        return Response({"error": "teacher_id parameter is required"}, status=400)
 
 
 class TestResultsViewSet(viewsets.ModelViewSet):
@@ -15,17 +32,24 @@ class TestResultsViewSet(viewsets.ModelViewSet):
     serializer_class = TestResultsSerializer
 
 
-class TestImageViewSet(viewsets.ViewSet):
-    def create(self, request):
-        serializer = TestImageSerializer(data=request.data)
-        if serializer.is_valid():
-            # Передаем изображение в функцию `scan`
-            processed_image_io = scan(request.FILES['image'])
+class TestImageViewSet(viewsets.ModelViewSet):
+    queryset = TestImage.objects.all()
+    serializer_class = TestImageSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
-            # Возвращаем обновленное изображение в ответе
-            return Response(
-                processed_image_io.getvalue(),
-                content_type="image/jpeg",
-                status=status.HTTP_200_OK
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def create(self, request, *args, **kwargs):
+        # Получение изображения из запроса
+        image_file = request.FILES.get("image")
+        image = Image.open(image_file).convert("RGB")
+
+        open_cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+        processed_image = scan(open_cv_image)  # Вызов функции scan
+
+
+        pil_image = Image.fromarray(cv2.cvtColor(processed_image, cv2.COLOR_BGR2RGB))
+        byte_io = io.BytesIO()
+        pil_image.save(byte_io, 'JPEG')
+        byte_io.seek(0)
+
+        return HttpResponse(byte_io, content_type='image/jpeg')

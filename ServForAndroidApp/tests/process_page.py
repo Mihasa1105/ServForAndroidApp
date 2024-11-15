@@ -6,17 +6,11 @@ epsilon = 10 #image error sensitivity
 test_sensitivity_epsilon = 5 #bubble darkness error sensitivity
 answer_choices = ['A', 'B', 'C', 'D', 'E', '?'] #answer choices
 
-tags = [cv2.imread("../markers/top_left.png", cv2.IMREAD_GRAYSCALE),
-        cv2.imread("../markers/top_right.png", cv2.IMREAD_GRAYSCALE),
-        cv2.imread("../markers/bottom_left.png", cv2.IMREAD_GRAYSCALE),
-        cv2.imread("../markers/bottom_right.png", cv2.IMREAD_GRAYSCALE)]
-
-
 scaling = [1240.0, 1754.0]  # Масштаб для A4 8.5x11 дюймов
-columns = [[148.0 / scaling[0], 45.0 / scaling[1]], [658.0 / scaling[0], 45.0 / scaling[1]]]  # Столбцы для ответов
+columns = [[120.0 / scaling[0], 50.0 / scaling[1]], [630.0 / scaling[0], 50.0 / scaling[1]]]  # Столбцы для ответов
 radius = 14.5 / scaling[0]  # Радиус кружков
-spacing = [57.0 / scaling[0], 49 / scaling[1]]  # Интервалы для ответов
-margin_up = 100.0 / scaling[1]
+spacing = [55.0 / scaling[0], 49 / scaling[1]]  # Интервалы для ответов
+margin_up = 60.0 / scaling[1]
 
 
 def ProcessPage(paper):
@@ -29,7 +23,7 @@ def ProcessPage(paper):
         return [-1], paper, [-1]
 
     for corner in corners:
-        cv2.rectangle(paper, (corner[0] - 10, corner[1] - 10), (corner[0] + 10, corner[1] + 10), (0, 255, 0), thickness=2)
+        cv2.rectangle(paper, (corner[0], corner[1]), (corner[0], corner[1]), (0, 255, 0), thickness=2)
 
 
     dimensions = [corners[1][0] - corners[0][0], corners[2][1] - corners[0][1]]
@@ -73,47 +67,62 @@ def ProcessPage(paper):
     return answers, paper
 
 
+marker_tl = cv2.imread("tests/markers/top_left.png", cv2.IMREAD_GRAYSCALE)
+marker_tr = cv2.imread("tests/markers/top_right.png", cv2.IMREAD_GRAYSCALE)
+marker_bl = cv2.imread("tests/markers/bottom_left.png", cv2.IMREAD_GRAYSCALE)
+marker_br = cv2.imread("tests/markers/bottom_right.png", cv2.IMREAD_GRAYSCALE)
+
+template_matching_threshold = 0.6
+
 def FindCorners(paper):
-    gray_paper = cv2.cvtColor(paper, cv2.COLOR_BGR2GRAY) #convert image of paper to grayscale
+    gray_paper = cv2.cvtColor(paper, cv2.COLOR_BGR2GRAY)
 
-    #scaling factor used later
-    ratio = len(paper[0]) / 1500.0
+    # Определяем ratio для масштабирования меток под размер изображения
+    ratio = len(paper[0]) / 1240.0  # 1240 - ширина листа A4 при 150 DPI
 
-    #error detection
-    if ratio == 0:
-        return -1
+    # Масштабируем метки под изображение
+    markers = [
+        cv2.resize(marker_tl, (0, 0), fx=ratio, fy=ratio),
+        cv2.resize(marker_tr, (0, 0), fx=ratio, fy=ratio),
+        cv2.resize(marker_bl, (0, 0), fx=ratio, fy=ratio),
+        cv2.resize(marker_br, (0, 0), fx=ratio, fy=ratio),
+    ]
 
-    corners = [] #array to hold found corners
+    # Позиции углов на листе, где будут искать каждую метку
+    search_regions = [
+        (0, len(paper[0]) // 2, 0, len(paper) // 2),  # top-left
+        (len(paper[0]) // 2, len(paper[0]), 0, len(paper) // 2),  # top-right
+        (0, len(paper[0]) // 2, len(paper) // 2, len(paper)),  # bottom-left
+        (len(paper[0]) // 2, len(paper[0]), len(paper) // 2, len(paper)),  # bottom-right
+    ]
 
-    #try to find the tags via convolving the image
-    for tag in tags:
-        tag = cv2.resize(tag, (0,0), fx=ratio, fy=ratio) #resize tags to the ratio of the image
+    corners = []
 
-        #convolve the image
-        convimg = (cv2.filter2D(np.float32(cv2.bitwise_not(gray_paper)), -1, np.float32(cv2.bitwise_not(tag))))
+    for i, marker in enumerate(markers):
+        x_start, x_end, y_start, y_end = search_regions[i]
+        region = gray_paper[y_start:y_end, x_start:x_end]
 
-        #find the maximum of the convolution
-        corner = np.unravel_index(convimg.argmax(), convimg.shape)
+        # Шаблонное сопоставление
+        res = cv2.matchTemplate(region, marker, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-        #append the coordinates of the corner
-        corners.append([corner[1], corner[0]]) #reversed because array order is different than image coordinate
+        if max_val >= template_matching_threshold:
+            # Найденное положение угла с учетом смещения для региона
+            corner_x = max_loc[0] + x_start
+            corner_y = max_loc[1] + y_start
+            corners.append((corner_x + marker.shape[1], corner_y + marker.shape[0]))
 
-    #draw the rectangle around the detected markers
-    for corner in corners:
-        cv2.rectangle(paper, (corner[0] - int(ratio * 25), corner[1] - int(ratio * 25)),
-        (corner[0] + int(ratio * 25), corner[1] + int(ratio * 25)), (0, 255, 0), thickness=2, lineType=8, shift=0)
+            # Отметим найденный угол на изображении
+            cv2.rectangle(paper, (corner_x, corner_y),
+                          (corner_x + marker.shape[1], corner_y + marker.shape[0]),
+                          (0, 255, 0), 2)
 
-    #check if detected markers form roughly parallel lines when connected
-    if corners[0][0] - corners[2][0] > epsilon:
-        return None
+        else:
+            print(f"Метка {i + 1} не найдена с достаточной точностью")
 
-    if corners[1][0] - corners[3][0] > epsilon:
-        return None
-
-    if corners[0][1] - corners[1][1] > epsilon:
-        return None
-
-    if corners[2][1] - corners[3][1] > epsilon:
+    # Если найдено меньше четырех углов, возвращаем None
+    if len(corners) < 4:
+        print("Не удалось найти все четыре угла.")
         return None
 
     return corners

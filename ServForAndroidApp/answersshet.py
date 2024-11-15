@@ -2,10 +2,10 @@ import cv2
 import numpy as np
 
 # Загрузка четырёх разных угловых меток
-marker_bl = cv2.imread("markers/bottom_left.png", cv2.IMREAD_GRAYSCALE)
-marker_br = cv2.imread("markers/bottom_right.png", cv2.IMREAD_GRAYSCALE)
-marker_tl = cv2.imread("markers/top_left.png", cv2.IMREAD_GRAYSCALE)
-marker_tr = cv2.imread("markers/top_right.png", cv2.IMREAD_GRAYSCALE)
+marker_bl = cv2.imread("tests/markers/bottom_left.png", cv2.IMREAD_GRAYSCALE)
+marker_br = cv2.imread("tests/markers/bottom_right.png", cv2.IMREAD_GRAYSCALE)
+marker_tl = cv2.imread("tests/markers/top_left.png", cv2.IMREAD_GRAYSCALE)
+marker_tr = cv2.imread("tests/markers/top_right.png", cv2.IMREAD_GRAYSCALE)
 
 # Размер меток (предполагаем, что все метки одинакового размера)
 marker_size = marker_tl.shape[0]
