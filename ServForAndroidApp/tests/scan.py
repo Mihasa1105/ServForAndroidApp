@@ -1,11 +1,11 @@
+import json
 import cv2
 import numpy as np
 from .process_page import ProcessPage
-from io import BytesIO
-from PIL import Image
+from django.shortcuts import get_object_or_404
+from .models import Test
 
-
-def scan(image):
+def scan(image, test_id):
 	def clockwise_sort(x):
 		return (np.arctan2(x[0] - mx, x[1] - my) + 0.02 * np.pi) % (2 * np.pi)
 	ratio = len(image[0]) / 1240.0
@@ -63,10 +63,17 @@ def scan(image):
 		else:
 			cv2.drawContours(image, [biggestContour], -1, (0, 0, 255), 3)
 
+	test = get_object_or_404(Test, id=test_id)
+	correct_answers = test.answers
+	correct_count = sum(
+		1 for key, student_answer in answers.items()
+		if correct_answers.get(key) == student_answer
+	)
+
+	return paper, answers, correct_count
 	# cv2.imshow("Scanned Paper", cv2.resize(paper, (0, 0), fx=0.5, fy=0.5))
 	# cv2.waitKey(0)
 	# cv2.destroyAllWindows()
-	return paper
 
 #paper = scan('tests/photo_tests/IMG_20241109_141713066.jpg')
 #paper = scan('tests/photo_tests/IMG_20241109_141721183.jpg')

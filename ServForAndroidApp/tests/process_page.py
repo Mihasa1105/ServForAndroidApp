@@ -64,7 +64,9 @@ def ProcessPage(paper):
             #append the answers to the array
             answers.append(answer_choices[min_arg])
 
-    return answers, paper
+    answers_dict = {str(index + 1): answer for index, answer in enumerate(answers)}
+
+    return answers_dict, paper
 
 
 marker_tl = cv2.imread("tests/markers/top_left.png", cv2.IMREAD_GRAYSCALE)

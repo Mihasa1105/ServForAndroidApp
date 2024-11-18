@@ -17,7 +17,9 @@ class TestResults(models.Model):
     test_id = models.ForeignKey(Test, on_delete=models.CASCADE)
     student_id = models.ForeignKey('stud.Students', on_delete=models.CASCADE)
     answers = models.JSONField()
+    image = models.ImageField()
 
 
 class TestImage(models.Model):
-    image = models.ImageField(upload_to='uploads/')
+    test_id = models.IntegerField()
+    image = models.ImageField()
