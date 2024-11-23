@@ -13,7 +13,7 @@ def scan(image, test_id):
 
 	# cv2.imshow("Scanned Paper", cv2.resize(image, (0, 0), fx=1, fy=1))
 	# cv2.waitKey(0)
-	# cv2.destroyAllWindows()
+	# cv2.destroyAllWindows() 
 
 	image = cv2.resize(image, (0,0), fx=1/ratio, fy=1/ratio)
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

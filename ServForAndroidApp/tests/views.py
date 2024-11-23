@@ -29,6 +29,49 @@ class TestResultsViewSet(viewsets.ModelViewSet):
     queryset = TestResults.objects.all()
     serializer_class = TestResultsSerializer
 
+    @action(detail=False, methods=['get'], url_path='results_by_test')
+    def get_results_by_test(self, request):
+        test_id = request.query_params.get('test_id', None)
+        if test_id is None:
+            return Response({"detail": "Test ID is required"}, status=400)
+
+        # Фильтруем результаты по ID теста
+        results = TestResults.objects.filter(test_id=test_id)
+        result_data = []
+
+        for result in results:
+            # Сравниваем ответы
+            correct_answers_count = self.calculate_correct_answers(result)
+
+            # Получаем данные студента
+            student = result.student_id
+            student_name = f"{student.surname} {student.name[0]}. {student.father_name[0]}."
+
+            # Получаем название группы (без повторного запроса в базу данных)
+            group_name = student.group_id.group_name
+
+            # Добавляем результат в список
+            result_data.append({
+                "result_id": result.id,
+                "student_name": student_name,
+                "group_name": group_name,
+                "correct_answers_count": correct_answers_count
+            })
+
+        return Response(result_data)
+
+
+    def calculate_correct_answers(self, result):
+        correct_answers_count = 0
+        test_answers = result.test_id.answers  # Ответы на тест
+        student_answers = result.answers  # Ответы студента
+
+        # Сравниваем ответы
+        for question, answer in student_answers.items():
+            if test_answers.get(question) == answer:
+                correct_answers_count += 1
+        return correct_answers_count
+
 
 class TestImageViewSet(viewsets.ModelViewSet):
     queryset = TestImage.objects.all()
