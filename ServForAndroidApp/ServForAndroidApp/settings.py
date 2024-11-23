@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'myapp',
     'stud',
     'tests',
+    'django.contrib.postgres'
 ]
 
 MIDDLEWARE = [
@@ -83,7 +84,7 @@ DATABASES = {
         'NAME': 'pgdbforkursandapp',
         'USER': 'meow',
         'PASSWORD': '1234',
-        'HOST': 'localhost',
+        'HOST': 'db',
         'PORT': '5432'
     }
 }

@@ -1,0 +1,38 @@
+version: '3.9'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: django-server
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=pgdbforkursandapp
+      - DATABASE_USER=meow
+      - DATABASE_PASSWORD=1234
+    env_file:
+      - .env
+
+  db:
+    image: postgres:15
+    container_name: postgres-db
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: pgdbforkursandapp
+      POSTGRES_USER: meow
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

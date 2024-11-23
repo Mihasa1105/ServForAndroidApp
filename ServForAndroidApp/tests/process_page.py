@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 from PIL import Image
 
 epsilon = 10 #image error sensitivity
@@ -68,11 +69,16 @@ def ProcessPage(paper):
 
     return answers_dict, paper
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-marker_tl = cv2.imread("tests/markers/top_left.png", cv2.IMREAD_GRAYSCALE)
-marker_tr = cv2.imread("tests/markers/top_right.png", cv2.IMREAD_GRAYSCALE)
-marker_bl = cv2.imread("tests/markers/bottom_left.png", cv2.IMREAD_GRAYSCALE)
-marker_br = cv2.imread("tests/markers/bottom_right.png", cv2.IMREAD_GRAYSCALE)
+# Формируем путь к маркерам
+MARKERS_DIR = os.path.join(BASE_DIR, 'tests', 'markers')
+
+# Загружаем маркеры
+marker_tl = cv2.imread(os.path.join(MARKERS_DIR, 'top_left.png'), cv2.IMREAD_GRAYSCALE)
+marker_tr = cv2.imread(os.path.join(MARKERS_DIR, 'top_right.png'), cv2.IMREAD_GRAYSCALE)
+marker_bl = cv2.imread(os.path.join(MARKERS_DIR, 'bottom_left.png'), cv2.IMREAD_GRAYSCALE)
+marker_br = cv2.imread(os.path.join(MARKERS_DIR, 'bottom_right.png'), cv2.IMREAD_GRAYSCALE)
 
 template_matching_threshold = 0.6
 
