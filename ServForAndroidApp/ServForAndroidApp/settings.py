@@ -84,7 +84,7 @@ DATABASES = {
         'NAME': 'pgdbforkursandapp',
         'USER': 'meow',
         'PASSWORD': '1234',
-        'HOST': 'db',
+        'HOST': 'localhost',
         'PORT': '5432'
     }
 }

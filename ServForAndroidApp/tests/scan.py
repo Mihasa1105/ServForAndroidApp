@@ -50,9 +50,12 @@ def scan(image, test_id):
 	points *= ratio
 	answers = 1
 	if biggestContour is not None:
-		M = cv2.getPerspectiveTransform(points, desired_points)
-		paper = cv2.warpPerspective(original_image, M, (1240, 1754))
-		answers, paper = ProcessPage(paper)
+		if cv2.contourArea(biggestContour) > 2000:
+			M = cv2.getPerspectiveTransform(points, desired_points)
+			paper = cv2.warpPerspective(original_image, M, (1240, 1754))
+			answers, paper = ProcessPage(paper)
+		else:
+			return
 
 	if biggestContour is not None:
 		if answers != -1:
