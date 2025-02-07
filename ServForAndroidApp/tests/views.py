@@ -19,10 +19,20 @@ class TestViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='teacher_tests')
     def get_teacher_tests(self, request):
         teacher_id = request.query_params.get('teacher_id')
-        if teacher_id is not None:
-            tests = Test.objects.filter(user_id=teacher_id).values('id', 'test_name', 'subject_id__subject_name')
-            return Response(tests)
-        return Response({"error": "teacher_id parameter is required"}, status=400)
+        subject_id = request.query_params.get('subject_id')
+
+        if teacher_id is None:
+            return Response({"error": "teacher_id parameter is required"}, status=400)
+
+        # Базовая фильтрация по teacher_id
+        filters = {'user_id': teacher_id}
+
+        # Добавляем фильтр по subject_id, если он передан
+        if subject_id is not None:
+            filters['subject_id'] = subject_id
+
+        tests = Test.objects.filter(**filters).values('id', 'test_name', 'question_quantity')
+        return Response(tests)
 
 
 class TestResultsViewSet(viewsets.ModelViewSet):
