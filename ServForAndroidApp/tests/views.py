@@ -50,8 +50,8 @@ class TestResultsViewSet(viewsets.ModelViewSet):
         result_data = []
 
         for result in results:
-            # Сравниваем ответы
-            correct_answers_count = self.calculate_correct_answers(result)
+            correct_answers_count = result.points
+            mark = result.mark
 
             # Получаем данные студента
             student = result.student_id
@@ -65,16 +65,12 @@ class TestResultsViewSet(viewsets.ModelViewSet):
                 "result_id": result.id,
                 "student_name": student_name,
                 "group_name": group_name,
-                "correct_answers_count": correct_answers_count
+                "correct_answers_count": correct_answers_count,
+                "mark": mark
             })
 
         return Response(result_data)
 
-
-    def calculate_correct_answers(self, result):
-        correct_answers_count = 0
-        test_answers = result.test_id.answers  # Ответы на тест
-        student_answers = result.answers  # Ответы студента
 
         # Сравниваем ответы
         for question, answer in student_answers.items():
@@ -99,7 +95,7 @@ class TestImageViewSet(viewsets.ModelViewSet):
         open_cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
         # Обработка изображения
-        processed_image, student_answers, correct_count = scan(open_cv_image, test_id)
+        processed_image, student_answers, total_points, grade = scan(open_cv_image, test_id)
 
         if student_answers is None:
             return Response({"error": "Failed to process the image"}, status=400)
@@ -114,7 +110,8 @@ class TestImageViewSet(viewsets.ModelViewSet):
         response_data = {
             "image": image_base64,  # Возвращаем строку base64
             "student_answers": student_answers,
-            "correct_count": correct_count,
+            "total_points": total_points,
+            "grade": grade,
         }
 
         return Response(response_data, content_type="application/json")

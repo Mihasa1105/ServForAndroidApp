@@ -48,14 +48,15 @@ def scan(image, test_id):
 
 	paper = []
 	points *= ratio
-	answers = 1
+	answers = {}
+
 	if biggestContour is not None:
 		if cv2.contourArea(biggestContour) > 2000:
 			M = cv2.getPerspectiveTransform(points, desired_points)
 			paper = cv2.warpPerspective(original_image, M, (1240, 1754))
-			answers, paper = ProcessPage(paper)
+			answers, paper, total_points, grade = ProcessPage(paper, test_id)
 		else:
-			return
+			return None, None, 0
 
 	if biggestContour is not None:
 		if answers != -1:
@@ -66,14 +67,8 @@ def scan(image, test_id):
 		else:
 			cv2.drawContours(image, [biggestContour], -1, (0, 0, 255), 3)
 
-	test = get_object_or_404(Test, id=test_id)
-	correct_answers = test.answers
-	correct_count = sum(
-		1 for key, student_answer in answers.items()
-		if correct_answers.get(key) == student_answer
-	)
 
-	return paper, answers, correct_count
+	return paper, answers, total_points, grade
 	# cv2.imshow("Scanned Paper", cv2.resize(paper, (0, 0), fx=0.5, fy=0.5))
 	# cv2.waitKey(0)
 	# cv2.destroyAllWindows()

@@ -1,27 +1,36 @@
+import json
+
 import cv2
 import numpy as np
 import os
+from django.shortcuts import get_object_or_404
+from .models import Test
 from PIL import Image
+import pdb
 
 epsilon = 10 #image error sensitivity
-test_sensitivity_epsilon = 5 #bubble darkness error sensitivity
+test_sensitivity_epsilon = 7.5 #bubble darkness error sensitivity
 answer_choices = ['A', 'B', 'C', 'D', 'E', '?'] #answer choices
 
 scaling = [1240.0, 1754.0]  # Масштаб для A4 8.5x11 дюймов
 columns = [[120.0 / scaling[0], 50.0 / scaling[1]], [630.0 / scaling[0], 50.0 / scaling[1]]]  # Столбцы для ответов
 radius = 14.5 / scaling[0]  # Радиус кружков
 spacing = [55.0 / scaling[0], 49 / scaling[1]]  # Интервалы для ответов
-margin_up = 60.0 / scaling[1]
+margin_up = 70.0 / scaling[1]
 
 
-def ProcessPage(paper):
+def get_correct_answers(test_id):
+    test = get_object_or_404(Test, id=test_id)
+    return test.answers, test.question_quantity
+
+def ProcessPage(paper, test_id):
 
     answers = [] #contains answers
     gray_paper = cv2.cvtColor(paper, cv2.COLOR_BGR2GRAY) #convert image to grayscale
     corners = FindCorners(paper) #find the corners of the bubbled area
     print("Corners detected:", corners)
     if corners is None:
-        return [-1], paper, [-1]
+        return [], paper, 0, 0
 
     for corner in corners:
         cv2.rectangle(paper, (corner[0], corner[1]), (corner[0], corner[1]), (0, 255, 0), thickness=2)
@@ -29,45 +38,91 @@ def ProcessPage(paper):
 
     dimensions = [corners[1][0] - corners[0][0], corners[2][1] - corners[0][1]]
 
-    for k in range(0, 2):  # columns
-        for i in range(0, 25):  # rows
+    correct_answers, question_quantity= get_correct_answers(test_id) #Получаем правильные ответы
+
+    # Ожидаемое количество вопросов
+    processed_questions = 0
+    student_answers = {
+        i + 1: {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0,
+            "E": 0
+        }
+        for i in range(question_quantity)
+    }
+    total_points = 0  # Общая сумма баллов
+    total_max_points = 0  # Максимально возможная сумма баллов
+
+    for k in range(0, 2):  # два столбца
+        for i in range(0, 25):  # кол-во вопросов (всего должно быть 10, например)
+            if processed_questions >= question_quantity:
+                break
+            question_answer = correct_answers[str(processed_questions+1)]
+
+            is_correct = 1
             questions = []
-            for j in range(0, 5):  # answers
-                # coordinates of the answer bubble
+            coordinates = []
+
+            for j in range(0, 5):  # варианты ответа A, B, C, D, E
+                # координаты пузырька для ответа
                 x1 = int((columns[k][0] + j * spacing[0] - radius * 1.5) * dimensions[0] + corners[0][0])
                 y1 = int((columns[k][1] + i * spacing[1] - radius + margin_up) * dimensions[1] + corners[0][1])
                 x2 = int((columns[k][0] + j * spacing[0] + radius * 1.5) * dimensions[0] + corners[0][0])
                 y2 = int((columns[k][1] + i * spacing[1] + radius + margin_up) * dimensions[1] + corners[0][1])
+                questions.append(gray_paper[y1:y2, x1:x2]) # Записываем область бумаги
+                coordinates.append((x1, y1, x2, y2)) # Записываем координаты
 
-                # draw rectangles around bubbles
-                cv2.rectangle(paper, (x1, y1), (x2, y2), (255, 0, 0), thickness=1, lineType=8, shift=0)
+            means = [np.mean(question) for question in questions]
+            threshold = min(means) + test_sensitivity_epsilon # Яркость для сравнения
 
-                # crop answer bubble
-                questions.append(gray_paper[y1:y2, x1:x2])
+            is_correct = True # Правильно ли ответили на вопрос
 
-            means = []
-            x1 = int((columns[k][0] - radius*8)*dimensions[0] + corners[0][0])
-            y1 = int((columns[k][1] + i*spacing[1] + margin_up + 0.5*radius)*dimensions[1] + corners[0][1])
+            for j in range(0, 5): # Перебираем все 5 кружочков
+                if means[j] < threshold: # Если кружочек предположительно ответ
+                    student_answers[processed_questions + 1][answer_choices[j]] = 1
+                    if question_answer[answer_choices[j]] == '1':
+                        x1, y1, x2, y2 = coordinates[j]
+                        cv2.rectangle(paper, (x1, y1), (x2, y2), (0, 255, 0), thickness=3)
+                    else:
+                        x1, y1, x2, y2 = coordinates[j]
+                        cv2.rectangle(paper, (x1, y1), (x2, y2), (0, 0, 255), thickness=3)
+                        is_correct = False
+                else:
+                    student_answers[processed_questions + 1][answer_choices[j]] = 0
+                    if question_answer[answer_choices[j]] == '0':
+                        x1, y1, x2, y2 = coordinates[j]
+                        cv2.rectangle(paper, (x1, y1), (x2, y2), (0, 255, 0), thickness=3)
+                    else:
+                        x1, y1, x2, y2 = coordinates[j]
+                        cv2.rectangle(paper, (x1, y1), (x2, y2), (0, 0, 255), thickness=3)
+                        is_correct = False
 
-            for question in questions:
-                means.append(np.mean(question))
-            min_arg = np.argmin(means)
-            min_val = means[min_arg]
-            means[min_arg] = 255
-            min_val2 = means[np.argmin(means)]
-            if min_val2 - min_val < test_sensitivity_epsilon:
-                #if so, then the question has been double bubbled and is invalid
-                min_arg = 5
+            points = int(question_answer['pt'])
+            total_max_points += points
 
-            #write the answer
-            cv2.putText(paper, answer_choices[min_arg], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 150, 0), 2)
+            final_x = int(x2 + spacing[0])
+            final_y = int(y1 + (y2 - y1) / 2)
 
-            #append the answers to the array
-            answers.append(answer_choices[min_arg])
+            if is_correct:
+                total_points += points
+                cv2.putText(paper, 'V', (final_x, final_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0),
+                            2)  # Зеленая галочка
+            else:
+                cv2.putText(paper, 'X', (final_x, final_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255),
+                            2)  # Красный крестик
 
-    answers_dict = {str(index + 1): answer for index, answer in enumerate(answers)}
+            processed_questions += 1
 
-    return answers_dict, paper
+        score_percentage = (total_points / total_max_points) * 100 if total_max_points else 0
+
+        # Округление процента до оценки от 1 до 10
+        grade = round(score_percentage / 10)  # Переводим в оценку от 1 до 10
+
+        # Возвращаем изменённое изображение, JSON с ответами, количество баллов и оценку
+        return student_answers, paper, total_points, grade
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

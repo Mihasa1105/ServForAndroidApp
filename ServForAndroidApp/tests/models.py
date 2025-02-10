@@ -18,6 +18,8 @@ class TestResults(models.Model):
     student_id = models.ForeignKey('stud.Students', on_delete=models.CASCADE)
     answers = models.JSONField()
     image = models.ImageField()
+    points = models.IntegerField()
+    mark = models.IntegerField()
 
 
 class TestImage(models.Model):
