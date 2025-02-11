@@ -30,7 +30,10 @@ class UserCodeViewSet(viewsets.ModelViewSet):
             user = User.objects.get(id=user_id)
             user_code = UserCode.objects.get(user_id=user.id)
             if user_code.code == code:
-                return Response({'status': 'success'})
+                if user.is_admin:
+                    return Response({'status': 'success_admin'})
+                else:
+                    return Response({'status': 'success'})
             else:
                 return Response({'status': 'invalid code'}, status=400)
         except UserCode.DoesNotExist:
