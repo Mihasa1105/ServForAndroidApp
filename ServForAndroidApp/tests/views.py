@@ -2,7 +2,6 @@
 from .models import Test, TestResults, TestImage
 from rest_framework import viewsets
 from .serializers import TestImageSerializer, TestResultsSerializer, TestSerializer
-from rest_framework.parsers import MultiPartParser, FormParser
 from .scan import scan
 import cv2
 import numpy as np
@@ -10,7 +9,10 @@ from PIL import Image
 import io
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from .management.commands.telegram_bot import send_test_result
 import base64
+import json
+import asyncio
 
 class TestViewSet(viewsets.ModelViewSet):
     queryset = Test.objects.all()
@@ -38,6 +40,65 @@ class TestViewSet(viewsets.ModelViewSet):
 class TestResultsViewSet(viewsets.ModelViewSet):
     queryset = TestResults.objects.all()
     serializer_class = TestResultsSerializer
+
+    def create(self, request, *args, **kwargs):
+        test_id = request.data.get("test_id")
+        student_id = request.data.get("student_id")
+        answers_raw = request.data.get("answers", "{}")  # Гарантируем, что значение есть
+        image = request.data.get("image", None)
+
+        if not test_id or not student_id:
+            return Response({"detail": "Missing required fields"}, status=400)
+
+        try:
+            test = Test.objects.get(id=test_id)
+        except Test.DoesNotExist:
+            return Response({"detail": "Test not found"}, status=404)
+
+        # Проверяем, нужно ли парсить строки в JSON
+        if isinstance(answers_raw, str):
+            try:
+                student_answers = json.loads(answers_raw)  # Преобразуем строку в словарь
+            except json.JSONDecodeError:
+                return Response({"detail": "Invalid JSON format in answers"}, status=400)
+        else:
+            student_answers = answers_raw  # Уже JSON-объект
+
+        correct_answers = test.answers  # JSON с правильными ответами
+        total_points = 0
+        max_points = 0
+
+        for question, correct_data in correct_answers.items():
+            if question in student_answers:
+                student_response = student_answers[question]
+                correct_options = {k: v for k, v in correct_data.items() if k != "pt"}  # Убираем pt
+                pt = int(correct_data.get("pt", 0))  # Баллы за вопрос
+                max_points += pt  # Общие возможные баллы
+
+                if student_response == correct_options:
+                    total_points += pt  # Добавляем баллы, если ответ полностью совпадает
+
+        # Подсчёт процента и отметки
+        percentage = (total_points / max_points) * 100 if max_points > 0 else 0
+        mark = round(percentage / 10)  # Округляем и ставим отметку от 1 до 10
+        mark = max(1, min(mark, 10))  # Ограничиваем диапазон от 1 до 10
+
+        # Сохранение результата
+        test_result = TestResults.objects.create(
+            test_id=test,
+            student_id_id=student_id,
+            answers=student_answers,
+            image=image,
+            points=total_points,
+            mark=mark
+        )
+
+        student = test_result.student_id
+        if student.connect_address:
+            asyncio.run(send_test_result(test.test_name, student.connect_address, total_points, mark, image))
+
+        serializer = self.get_serializer(test_result)
+        return Response(serializer.data, status=201)
 
     @action(detail=False, methods=['get'], url_path='results_by_test')
     def get_results_by_test(self, request):
@@ -71,12 +132,6 @@ class TestResultsViewSet(viewsets.ModelViewSet):
 
         return Response(result_data)
 
-
-        # Сравниваем ответы
-        for question, answer in student_answers.items():
-            if test_answers.get(question) == answer:
-                correct_answers_count += 1
-        return correct_answers_count
 
 
 class TestImageViewSet(viewsets.ModelViewSet):
